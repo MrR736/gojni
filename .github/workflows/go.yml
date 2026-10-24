@@ -5,24 +5,31 @@ name: Go
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
-
   build:
     runs-on: ubuntu-latest
+
+    env:
+      CGO_ENABLED: 1
+      CGO_CFLAGS: "-I/usr/lib/jvm/default-java/include -I/usr/lib/jvm/default-java/include/linux"
+
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.20'
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.4"
 
-    - name: Build
-      run: go build -v ./...
+      - name: Install JNI headers
+        run: sudo apt-get update && sudo apt-get install -y default-jdk
 
-    - name: Test
-      run: go test -v ./...
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test -v ./...
