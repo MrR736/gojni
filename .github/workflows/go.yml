@@ -1,6 +1,3 @@
-# This workflow will build a golang project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
-
 name: Go
 
 on:
@@ -11,11 +8,16 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    name: Build and test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
     env:
       CGO_ENABLED: 1
-      CGO_CFLAGS: "-I/usr/lib/jvm/default-java/include -I/usr/lib/jvm/default-java/include/linux"
 
     steps:
       - uses: actions/checkout@v4
@@ -25,8 +27,48 @@ jobs:
         with:
           go-version: "1.24.4"
 
-      - name: Install JNI headers
-        run: sudo apt-get update && sudo apt-get install -y default-jdk
+      # Linux: install a JDK and JNI headers
+      - name: Install JNI headers (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y default-jdk
+          echo "CGO_CFLAGS=-I/usr/lib/jvm/default-java/include -I/usr/lib/jvm/default-java/include/linux" >> "$GITHUB_ENV"
+
+      # macOS: install a JDK and configure JNI headers
+      - name: Install JNI headers (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install openjdk
+          JAVA_HOME=$(/usr/libexec/java_home)
+          echo "JAVA_HOME=$JAVA_HOME" >> "$GITHUB_ENV"
+          echo "CGO_CFLAGS=-I$JAVA_HOME/include -I$JAVA_HOME/include/darwin" >> "$GITHUB_ENV"
+
+      # Windows: install a JDK and configure JNI headers
+      - name: Install JNI headers (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install temurin --yes
+          $javaHome = (Get-Command javac).Source | Split-Path | Split-Path
+          "JAVA_HOME=$javaHome" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "CGO_CFLAGS=-I$javaHome/include -I$javaHome/include/win32" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      # Windows cgo requires a C compiler
+      - name: Set up MSYS2 (Windows)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: mingw-w64-ucrt-x86_64-gcc
+
+      - name: Configure Windows compiler
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          "CC=gcc" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "PATH=C:\msys64\ucrt64\bin;$env:PATH" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Build
         run: go build -v ./...
