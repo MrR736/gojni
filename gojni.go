@@ -1,14 +1,12 @@
 package gojni
 
 /*
- #cgo CFLAGS: -I/usr/lib/jvm/default-java/include
- #cgo CFLAGS: -I/usr/lib/jvm/default-java/include/linux
- #include <stdlib.h>
- #include <stdarg.h>
- #include <jni.h>
- #include "javavm.h"
- #include "jnienv.h"
- #include "jnitools.h"
+#include <stdlib.h>
+#include <stdarg.h>
+#include <jni.h>
+#include "javavm.h"
+#include "jnienv.h"
+#include "jnitools.h"
 */
 import "C"
 
